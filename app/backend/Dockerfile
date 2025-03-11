@@ -16,10 +16,15 @@ WORKDIR /app/backend
 
 COPY ./backend /app/backend
 
-RUN python -m pip install --no-cache-dir -r requirements.txt
-RUN python -m pip install --no-cache-dir gunicorn
+# Create virtual environment
+RUN python -m venv antenv && \
+    . antenv/bin/activate && \
+    python -m pip install --no-cache-dir -r requirements.txt && \
+    python -m pip install --no-cache-dir gunicorn
 
 ENV PYTHONPATH="/app/backend"
+ENV PATH="/app/backend/antenv/bin:$PATH"
 
 CMD ["gunicorn", "-b", "0.0.0.0:8181", "main:app"]
+
 
