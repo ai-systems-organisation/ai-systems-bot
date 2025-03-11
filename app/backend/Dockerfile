@@ -1,11 +1,25 @@
+# FROM python:3.11-bullseye
+
+# WORKDIR /app
+
+# COPY ./ /app
+
+# RUN python -m pip install -r requirements.txt
+
+# RUN python -m pip install gunicorn
+
+# CMD ["python3", "-m", "gunicorn", "-b", "0.0.0.0:8000", "main:app"]
+
 FROM python:3.11-bullseye
 
-WORKDIR /app
+WORKDIR /app/backend
 
-COPY ./ /app
+COPY ./backend /app/backend
 
-RUN python -m pip install -r requirements.txt
+RUN python -m pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir gunicorn
 
-RUN python -m pip install gunicorn
+ENV PYTHONPATH="/app/backend"
 
-CMD ["python3", "-m", "gunicorn", "-b", "0.0.0.0:8000", "main:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:8181", "main:app"]
+
