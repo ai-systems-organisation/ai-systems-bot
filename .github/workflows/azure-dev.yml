@@ -8,6 +8,7 @@ on:
     branches:
       - main
       - master
+      - staging
 
 # GitHub Actions workflow to deploy to Azure using azd
 # To configure required secrets for connecting to Azure, simply run `azd pipeline config`
@@ -125,8 +126,8 @@ jobs:
         with:
           node-version: 18
 
-      - name: Log in with Azure (Federated Credentials)
-        if: ${{ env.AZURE_CLIENT_ID != '' }}
+      - name: Log in with Azure (Federated Credentials - Production)
+        if: github.ref == 'refs/heads/main' && env.AZURE_CLIENT_ID != ''
         run: |
           azd auth login `
             --client-id "$Env:AZURE_CLIENT_ID" `
@@ -134,8 +135,17 @@ jobs:
             --tenant-id "$Env:AZURE_TENANT_ID"
         shell: pwsh
 
-      - name: Log in with Azure (Client Credentials)
-        if: ${{ env.AZURE_CREDENTIALS != '' }}
+      - name: Log in with Azure (Federated Credentials - Staging)
+        if: github.ref == 'refs/heads/staging' && env.AZURE_CLIENT_ID != ''
+        run: |
+          azd auth login `
+            --client-id "$Env:AZURE_CLIENT_ID" `
+            --federated-credential-provider "github" `
+            --tenant-id "$Env:AZURE_TENANT_ID"
+        shell: pwsh
+
+      - name: Log in with Azure (Client Credentials - Production)
+        if: github.ref == 'refs/heads/main' && env.AZURE_CREDENTIALS != ''
         run: |
           $info = $Env:AZURE_CREDENTIALS | ConvertFrom-Json -AsHashtable;
           Write-Host "::add-mask::$($info.clientSecret)"
@@ -148,12 +158,43 @@ jobs:
         env:
           AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Provision Infrastructure
+      - name: Log in with Azure (Client Credentials - Staging)
+        if: github.ref == 'refs/heads/staging' && env.AZURE_CREDENTIALS != ''
+        run: |
+          $info = $Env:AZURE_CREDENTIALS | ConvertFrom-Json -AsHashtable;
+          Write-Host "::add-mask::$($info.clientSecret)"
+
+          azd auth login `
+            --client-id "$($info.clientId)" `
+            --client-secret "$($info.clientSecret)" `
+            --tenant-id "$($info.tenantId)"
+        shell: pwsh
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+
+
+      - name: Provision Infrastructure (Production)
+        if: github.ref == 'refs/heads/main'
         run: azd provision --no-prompt
         env:
           AZD_INITIAL_ENVIRONMENT_CONFIG: ${{ secrets.AZD_INITIAL_ENVIRONMENT_CONFIG }}
-          AZURE_SERVER_APP_SECRET: ${{ secrets.AZURE_SERVER_APP_SECRET }}
-          AZURE_CLIENT_APP_SECRET: ${{ secrets.AZURE_CLIENT_APP_SECRET }}
 
-      - name: Deploy Application
-        run: azd deploy --no-prompt
+      - name: Provision Infrastructure (Staging)
+        if: github.ref == 'refs/heads/staging'
+        run: azd provision --no-prompt
+        env:
+          AZD_INITIAL_ENVIRONMENT_CONFIG: ${{ secrets.AZD_INITIAL_ENVIRONMENT_CONFIG_STAGING }}
+
+
+      - name: Deploy Application to Production
+        if: github.ref == 'refs/heads/main'
+        run: |
+          azd deploy --no-prompt --env ai-systems-chatbot
+          az webapp deployment slot swap --name app-backend-xlhgdfn33arqo --resource-group rg-ai-systems-chatbot --slot staging --target-slot production
+
+      - name: Deploy Application to Staging
+        if: github.ref == 'refs/heads/staging'
+        run: azd deploy --no-prompt --env ai-systems-chatbot-staging
+
+      
+      
