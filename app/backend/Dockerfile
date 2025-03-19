@@ -46,4 +46,4 @@ ENV PYTHONPATH="/app/backend"
 ENV PATH="/app/backend/antenv/bin:$PATH"
 
 # Ensure virtual environment is activated
-CMD ["sh", "-c", ". antenv/bin/activate && gunicorn -b 0.0.0.0:8000 main:app"]
+CMD ["sh", "-c", ". antenv/bin/activate && gunicorn -b 0.0.0.0:8080 main:app"]
