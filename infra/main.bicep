@@ -363,7 +363,7 @@ module appServicePlan 'core/host/appserviceplan.bicep' = if (deploymentTarget ==
     tags: tags
     sku: {
       name: appServiceSkuName
-      capacity: 1
+      capacity: 2
     }
     kind: 'linux'
   }
